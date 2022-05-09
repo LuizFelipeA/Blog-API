@@ -1,9 +1,11 @@
 using System.Net;
 using Blog.Data;
 using Blog.Dtos;
+using Blog.Extensions;
 using Blog.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace Blog.Controllers
 {
@@ -22,9 +24,10 @@ namespace Blog.Controllers
             [FromServices] BlogDataContext context)
         {
             if(id is null)
-                return NotFound();
+                return NotFound(new ResultDto<Category>(
+                    error: "Category was not found. Please, enter a valid category."));
 
-            var category = await context.Categories.FirstOrDefaultAsync();
+            var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
             
             if(category is null)
                 return StatusCode(
@@ -38,11 +41,12 @@ namespace Blog.Controllers
 
         [HttpPost("categories")]
         public async Task<IActionResult> CreateAsync(
-            [FromBody] CreateCategoryDto categoryRequest,
+            [FromBody] EditorCategoryDto categoryRequest,
             [FromServices] BlogDataContext context)
         {
             if(!ModelState.IsValid)
-                return BadRequest();
+                return BadRequest(
+                    error: new ResultDto<Category>(ModelState.GetErrors()));
 
             var category = new Category
             {
@@ -53,19 +57,22 @@ namespace Blog.Controllers
             await context.Categories.AddAsync(category);
             await context.SaveChangesAsync();
 
-            return Created($"/categories/{category.Id}", category);
+            return Created(
+                $"/categories/{category.Id}",
+                new ResultDto<Category>(category));
         }
 
         [HttpPut("categories/{id:int}")]
         public async Task<IActionResult> UpdateAsync(
             [FromRoute] int? id,
-            [FromBody] Category categoryRequest,
+            [FromBody] EditorCategoryDto categoryRequest,
             [FromServices] BlogDataContext context)
         {
             var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
 
             if(category is null)
-                return NotFound();
+                return NotFound(new ResultDto<Category>(
+                    error: "Category was not found. Please, enter a valid category."));
 
             category.Name = categoryRequest.Name;
             category.Slug = categoryRequest.Slug;
@@ -73,7 +80,7 @@ namespace Blog.Controllers
             context.Categories.Update(category);
             await context.SaveChangesAsync();
 
-            return Ok(category);
+            return Ok(new ResultDto<Category>(category));
         }
 
         [HttpDelete("categories/{id:int}")]
@@ -85,12 +92,13 @@ namespace Blog.Controllers
             var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
 
             if(category is null)
-                return NotFound();
+                return NotFound(new ResultDto<Category>(
+                    error: "Category was not found. Please, enter a valid category."));
 
             context.Categories.Remove(category);
             await context.SaveChangesAsync();
 
-            return Ok(category);
+            return Ok(new ResultDto<Category>(category));
         }
     }
 }
