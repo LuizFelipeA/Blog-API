@@ -39,11 +39,13 @@ public class UserMap : IEntityTypeConfiguration<User>
             .HasMaxLength(255);
 
         builder.Property(x => x.Bio)
+            .IsRequired(false)
             .HasColumnName("Bio")
             .HasColumnType("VARCHAR")
             .HasMaxLength(8000);
 
         builder.Property(x => x.Image)
+            .IsRequired(false)
             .HasColumnName("Image")
             .HasColumnType("VARCHAR")
             .HasMaxLength(2000);
