@@ -3,6 +3,7 @@ using Blog.Data;
 using Blog.Dtos;
 using Blog.Extensions;
 using Blog.Models;
+using Ether.Outcomes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,12 +12,24 @@ namespace Blog.Controllers
 {
     [ApiController]
     [Route("api/")]
-    public class CategoryController : ControllerBase
+    public class CategoryController : HomeController
     {
         [HttpGet("categories")]
         public async Task<IActionResult> GetAllAsync(
             [FromServices] BlogDataContext context)
-            => Ok(await context.Categories.ToListAsync());
+        {
+            var categories = await context.Categories.ToListAsync();
+
+            if(categories is null)
+                return FailureResponse(
+                    statusCode: (int)HttpStatusCode.BadRequest,
+                    message: "Something went wrong.");
+
+            return SuccessResponse<List<Category>>(
+                statusCode: (int)HttpStatusCode.OK,
+                value: categories);
+            
+        }
 
         [HttpGet("categories/{id:int}")]
         public async Task<IActionResult> GetByIdAsync(
@@ -24,19 +37,20 @@ namespace Blog.Controllers
             [FromServices] BlogDataContext context)
         {
             if(id is null)
-                return NotFound(new ResultDto<Category>(
-                    error: "Category was not found. Please, enter a valid category."));
+                return FailureResponse(
+                    statusCode: (int)HttpStatusCode.NotFound,
+                    message: "Category not found. Please, enter a valid category.");
 
             var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
             
             if(category is null)
-                return StatusCode(
-                    (int)HttpStatusCode.BadRequest,
-                    new ResultDto<Category>("Something went wrong!"));
+                return FailureResponse(
+                    statusCode: (int)HttpStatusCode.BadRequest,
+                    message: "Something went wrong!");
 
-            var response = new ResultDto<Category>(category);
-
-            return Ok(response);
+            return SuccessResponse<Category>(
+                statusCode: (int)HttpStatusCode.OK,
+                value: category);
         }
 
         [HttpPost("categories")]
@@ -45,8 +59,9 @@ namespace Blog.Controllers
             [FromServices] BlogDataContext context)
         {
             if(!ModelState.IsValid)
-                return BadRequest(
-                    error: new ResultDto<Category>(ModelState.GetErrors()));
+                return FailureResponse(
+                    statusCode: (int)HttpStatusCode.BadRequest,
+                    messages: ModelState.GetErrors());
 
             var category = new Category
             {
@@ -57,9 +72,10 @@ namespace Blog.Controllers
             await context.Categories.AddAsync(category);
             await context.SaveChangesAsync();
 
-            return Created(
-                $"/categories/{category.Id}",
-                new ResultDto<Category>(category));
+            return SuccessResponse<Category>(
+                statusCode: (int)HttpStatusCode.OK,
+                value: category,
+                message: $"/categories/{category.Id}");
         }
 
         [HttpPut("categories/{id:int}")]
@@ -71,8 +87,9 @@ namespace Blog.Controllers
             var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
 
             if(category is null)
-                return NotFound(new ResultDto<Category>(
-                    error: "Category was not found. Please, enter a valid category."));
+                return FailureResponse(
+                    statusCode: (int)HttpStatusCode.NotFound,
+                    message: "Category not found. Please, enter a valid category.");
 
             category.Name = categoryRequest.Name;
             category.Slug = categoryRequest.Slug;
@@ -80,7 +97,9 @@ namespace Blog.Controllers
             context.Categories.Update(category);
             await context.SaveChangesAsync();
 
-            return Ok(new ResultDto<Category>(category));
+            return SuccessResponse<Category>(
+                statusCode: (int)HttpStatusCode.OK,
+                value: category);
         }
 
         [HttpDelete("categories/{id:int}")]
@@ -92,13 +111,16 @@ namespace Blog.Controllers
             var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
 
             if(category is null)
-                return NotFound(new ResultDto<Category>(
-                    error: "Category was not found. Please, enter a valid category."));
+                return FailureResponse(
+                    statusCode: (int)HttpStatusCode.NotFound,
+                    message: "Category not found. Please, enter a valid category.");
 
             context.Categories.Remove(category);
             await context.SaveChangesAsync();
 
-            return Ok(new ResultDto<Category>(category));
+            return SuccessResponse(
+                statusCode: (int)HttpStatusCode.OK,
+                message: "Category deleted.");
         }
     }
 }
