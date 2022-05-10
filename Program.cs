@@ -8,7 +8,35 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 var key = Encoding.ASCII.GetBytes(Configuration.JwtKey);
-builder.Services.AddAuthentication(
+
+ConfigureAuthentication(builder);
+
+ConfigureMvc(builder);
+
+ConfigureServices(builder);
+
+
+var app = builder.Build();
+
+LoadConfiguration(app);
+
+app.UseAuthentication(); // Who you are
+app.UseAuthorization(); // What you can do
+app.MapControllers();
+app.Run();
+
+void LoadConfiguration(WebApplication app)
+{
+    Configuration.JwtKey = app.Configuration.GetValue<string>(key: "JwtKey");
+    
+    var smtp = new Configuration.SmtpConfiguration();
+    app.Configuration.GetSection(key: "Smtp").Bind(smtp);
+    Configuration.Smtp = smtp;
+}
+
+void ConfigureAuthentication(WebApplicationBuilder builder)
+{
+    builder.Services.AddAuthentication(
     // Authentication
     x => 
     {
@@ -26,27 +54,26 @@ builder.Services.AddAuthentication(
                 ValidateAudience = false
             };
         });
+}
 
-builder
+void ConfigureMvc(WebApplicationBuilder builder)
+{
+    builder
     .Services
     .AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
         options.SuppressModelStateInvalidFilter = true;
     });
-    
-// Making DataContext available to all the controller
-builder.Services.AddDbContext<BlogDataContext>();
+}
 
-// Dependencie Injection
-builder.Services.AddTransient<TokenService>(); // -- Always create a new instance --
-// builder.Services.AddScoped(); // -- Create a new instance to each request --
-// builder.Services.AddSingleton(); // -- 1 per app -> Always the same instance for each app --
+void ConfigureServices(WebApplicationBuilder builder)
+{
+    // Making DataContext available to all the controller
+    builder.Services.AddDbContext<BlogDataContext>();
 
-var app = builder.Build();
-
-app.UseAuthentication(); // Who you are
-app.UseAuthorization(); // What you can do
-
-app.MapControllers();
-app.Run();
+    // Dependencie Injection
+    builder.Services.AddTransient<TokenService>(); // -- Always create a new instance --
+    // builder.Services.AddScoped(); // -- Create a new instance to each request --
+    // builder.Services.AddSingleton(); // -- 1 per app -> Always the same instance for each app --
+}
