@@ -26,9 +26,11 @@ public class UserController : HomeController
                 statusCode: (int)HttpStatusCode.BadRequest,
                 ModelState.GetErrors());
 
-        var email = await context.Users.CountAsync(user => user.Email == modelRequest.Email);
+        var isInvalidUser = await context.Users
+            .AsNoTracking()
+            .AnyAsync(user => user.Email == modelRequest.Email);
 
-        if(email is not 0)
+        if(isInvalidUser)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.BadRequest,
                 message: "Email already registered. Please, enter a valid email.");
@@ -59,10 +61,39 @@ public class UserController : HomeController
 
     [HttpPost]
     [Route("login")]
-    public IActionResult Login([FromServices] TokenService tokenService)
+    public async Task<IActionResult> AuthenticateAsync(
+        [FromBody] AuthenticationDto modelRequest,
+        [FromServices] TokenService tokenService,
+        [FromServices] BlogDataContext context)
     {
-        var token = tokenService.GenerateToken(null);
+        if(!ModelState.IsValid)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                ModelState.GetErrors());
 
-        return Ok(token);
+        var user = await context.Users
+            .AsNoTracking()
+            .Include(x => x.Roles)
+            .FirstOrDefaultAsync(user => user.Email == modelRequest.Email);
+
+        if(user is null)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                "User or Password does not exist. Please, enter a valid User or Password.");
+
+        var isPasswordValid = PasswordHasher.Verify(
+            hash: user.PasswordHash,
+            password: modelRequest.Password);
+
+        if(!isPasswordValid)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                "User or Password does not exist. Please, enter a valid User or Password.");
+
+        var token = tokenService.GenerateToken(user);
+        
+        return SuccessResponse<dynamic>(
+            (int)HttpStatusCode.OK,
+            new { token });
     }
 }

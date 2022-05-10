@@ -27,7 +27,6 @@ public class CategoryController : HomeController
         return SuccessResponse<List<Category>>(
             statusCode: (int)HttpStatusCode.OK,
             value: categories);
-        
     }
 
     [HttpGet("categories/{id:int}")]
