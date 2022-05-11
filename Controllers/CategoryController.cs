@@ -5,29 +5,56 @@ using Blog.Extensions;
 using Blog.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Blog.Controllers;
 
 [ApiController]
-[Route("api/")]
+[Route("api/category/")]
 public class CategoryController : HomeController
 {
     [HttpGet("categories")]
     public async Task<IActionResult> GetAllAsync(
-        [FromServices] BlogDataContext context)
+        [FromServices] IMemoryCache cache,
+        [FromServices] BlogDataContext context,
+        [FromQuery] int? page = 0,
+        [FromQuery] int? pageSize = 25)
     {
-        var categories = await context.Categories.ToListAsync();
+        if(page is null || pageSize is null)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                "The page and page size fields is required.");
+
+        var categories = cache.GetOrCreate(
+            key: "CategoriesCache",
+            factory: entry => 
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                
+                return GetCategoriesAsync(context: context);
+            });
+
+        // var categories = await context
+        //     .Categories
+        //     .AsNoTracking()
+        //     .Skip((int)page * (int)pageSize)
+        //     .Take((int)pageSize)
+        //     .ToListAsync();
 
         if(categories is null)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.BadRequest,
-                message: "Something went wrong.");
+                message: "There is no categories.");
 
         return SuccessResponse<List<Category>>(
             statusCode: (int)HttpStatusCode.OK,
             value: categories);
     }
+
+    private List<Category> GetCategoriesAsync(
+        [FromServices] BlogDataContext context)
+            => context.Categories.ToList();
+    
 
     [HttpGet("categories/{id:int}")]
     public async Task<IActionResult> GetByIdAsync(
