@@ -74,6 +74,7 @@ void ConfigureServices(WebApplicationBuilder builder)
 
     // Dependencie Injection
     builder.Services.AddTransient<TokenService>(); // -- Always create a new instance --
+    builder.Services.AddTransient<EmailService>(); // -- Always create a new instance --
     // builder.Services.AddScoped(); // -- Create a new instance to each request --
     // builder.Services.AddSingleton(); // -- 1 per app -> Always the same instance for each app --
 }

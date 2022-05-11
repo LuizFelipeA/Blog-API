@@ -22,6 +22,7 @@ public class UserController : HomeController
     [AllowAnonymous]
     public async Task<IActionResult> RegisterAsync(
         [FromBody] RegisterUserDto modelRequest,
+        [FromServices] EmailService emailService,
         [FromServices] BlogDataContext context)
     {
         if(!ModelState.IsValid)
@@ -56,6 +57,12 @@ public class UserController : HomeController
 
         await context.Users.AddAsync(user);
         await context.SaveChangesAsync();
+
+        // emailService.Send(
+        //     toName: user.Name,
+        //     toEmail: user.Email,
+        //     subject: "Welcome to LP world :)",
+        //     body: $"Your password is <strong>{password}</strong>");
 
         return SuccessResponse<dynamic>(
             (int)HttpStatusCode.OK,
