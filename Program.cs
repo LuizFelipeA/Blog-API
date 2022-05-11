@@ -1,9 +1,11 @@
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json.Serialization;
 using Blog;
 using Blog.Data;
 using Blog.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +25,9 @@ LoadConfiguration(app);
 
 app.UseAuthentication(); // Who you are
 app.UseAuthorization(); // What you can do
+
+app.UseResponseCompression(); // Enable use of response compression
+
 app.UseStaticFiles(); // Allows app to store files in wwwroot
 app.MapControllers();
 app.Run();
@@ -61,8 +66,18 @@ void ConfigureAuthentication(WebApplicationBuilder builder)
 void ConfigureMvc(WebApplicationBuilder builder)
 {
     builder.Services.AddMemoryCache(); // Support to memory cache
-    builder
-    .Services
+
+    // Adding response compression to our app with GZIP provider
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.Providers.Add<GzipCompressionProvider>();
+    });
+    builder.Services.Configure<GzipCompressionProviderOptions>(options => 
+    {
+        options.Level = CompressionLevel.Optimal;
+    });
+
+    builder.Services
     .AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
