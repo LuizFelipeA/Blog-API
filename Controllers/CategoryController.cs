@@ -10,7 +10,7 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Blog.Controllers;
 
 [ApiController]
-[Route("api/")]
+[Route("api/category/")]
 public class CategoryController : HomeController
 {
     [HttpGet("categories")]

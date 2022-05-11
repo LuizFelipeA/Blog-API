@@ -13,7 +13,7 @@ using SecureIdentity.Password;
 namespace Blog.Controllers;
 
 [ApiController]
-[Route("/api")]
+[Route("/api/user/")]
 [Authorize]
 
 public class UserController : HomeController

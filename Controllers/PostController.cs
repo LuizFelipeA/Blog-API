@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Blog.Controllers;
 
 [ApiController]
-[Route("/api")]
+[Route("/api/post/")]
 
 public class PostController : HomeController
 {
