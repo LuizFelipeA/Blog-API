@@ -15,14 +15,26 @@ public class CategoryController : HomeController
 {
     [HttpGet("categories")]
     public async Task<IActionResult> GetAllAsync(
-        [FromServices] BlogDataContext context)
+        [FromServices] BlogDataContext context,
+        [FromQuery] int? page = 0,
+        [FromQuery] int? pageSize = 25)
     {
-        var categories = await context.Categories.ToListAsync();
+        if(page is null || pageSize is null)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                "The page and page size fields is required.");
+
+        var categories = await context
+            .Categories
+            .AsNoTracking()
+            .Skip((int)page * (int)pageSize)
+            .Take((int)pageSize)
+            .ToListAsync();
 
         if(categories is null)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.BadRequest,
-                message: "Something went wrong.");
+                message: "There is no categories.");
 
         return SuccessResponse<List<Category>>(
             statusCode: (int)HttpStatusCode.OK,
