@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Blog.Dtos;
+namespace Blog.Dtos.CategoryDtos;
 
 public class EditorCategoryDto
 {

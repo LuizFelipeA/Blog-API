@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Blog.Data;
 using Blog.Dtos.UserDtos;
 using Blog.Extensions;
@@ -22,6 +23,7 @@ public class UserController : HomeController
     [AllowAnonymous]
     public async Task<IActionResult> RegisterAsync(
         [FromBody] RegisterUserDto modelRequest,
+        [FromServices] EmailService emailService,
         [FromServices] BlogDataContext context)
     {
         if(!ModelState.IsValid)
@@ -56,6 +58,12 @@ public class UserController : HomeController
 
         await context.Users.AddAsync(user);
         await context.SaveChangesAsync();
+
+        // emailService.Send(
+        //     toName: user.Name,
+        //     toEmail: user.Email,
+        //     subject: "Welcome to LP world :)",
+        //     body: $"Your password is <strong>{password}</strong>");
 
         return SuccessResponse<dynamic>(
             (int)HttpStatusCode.OK,
@@ -187,5 +195,50 @@ public class UserController : HomeController
         return SuccessResponse(
             statusCode: (int)HttpStatusCode.OK,
             message: "User deleted.");
+    }
+
+    [HttpPost]
+    [Route("upload-profile-image")]
+    public async Task<IActionResult> UploadProfileImageAsync(
+        [FromBody] UploadProfileImageDto modelRequest,
+        [FromServices] BlogDataContext context)
+    {
+        var fileName = $"{Guid.NewGuid().ToString()}.jpg";
+        
+        var data = new Regex(@"^data:image\/[a-z]+;base64,")
+            .Replace(
+                input: modelRequest.Base64Image,
+                replacement: "");
+
+        var bytes = Convert.FromBase64String(data);
+
+        try
+        {
+            await System.IO.File.WriteAllBytesAsync(path: $"wwwroot/images/{fileName}", bytes);
+        }
+        catch
+        {
+            return FailureResponse(
+                (int)HttpStatusCode.InternalServerError,
+                "Internal Server Error.");
+        }
+
+        var user = await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == User.Identity.Name);
+
+        if(user is null)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                "User was not found.");
+
+        user.Image = $"https://localhost:0000/images/{fileName}";
+
+        context.Users.Update(user);
+        await context.SaveChangesAsync();
+
+        return SuccessResponse(
+            (int)HttpStatusCode.OK,
+            "Image successfully modified.");
     }
 }
