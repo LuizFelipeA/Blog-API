@@ -1,6 +1,6 @@
 using System.Net;
 using Blog.Data;
-using Blog.Dtos;
+using Blog.Dtos.CategoryDtos;
 using Blog.Extensions;
 using Blog.Models;
 using Microsoft.AspNetCore.Mvc;

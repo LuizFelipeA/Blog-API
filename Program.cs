@@ -22,6 +22,7 @@ LoadConfiguration(app);
 
 app.UseAuthentication(); // Who you are
 app.UseAuthorization(); // What you can do
+app.UseStaticFiles(); // Allows app to store files in wwwroot
 app.MapControllers();
 app.Run();
 
