@@ -3,6 +3,8 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Blog;
 using Blog.Data;
+using Blog.Repositories;
+using Blog.Repositories.Interfaces;
 using Blog.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -112,6 +114,8 @@ void ConfigureServices(WebApplicationBuilder builder)
     // Dependencie Injection
     builder.Services.AddTransient<TokenService>(); // -- Always create a new instance --
     builder.Services.AddTransient<EmailService>(); // -- Always create a new instance --
+    builder.Services.AddTransient<ICategoryRepository, CategoryRepository>(); // -- Always create a new instance --
+    builder.Services.AddTransient<ICategoryRepository, CategoryRepository>(); // -- Always create a new instance --
     // builder.Services.AddScoped(); // -- Create a new instance to each request --
     // builder.Services.AddSingleton(); // -- 1 per app -> Always the same instance for each app --
 }

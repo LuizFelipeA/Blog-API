@@ -3,6 +3,7 @@ using Blog.Data;
 using Blog.Dtos.CategoryDtos;
 using Blog.Extensions;
 using Blog.Models;
+using Blog.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,140 +14,108 @@ namespace Blog.Controllers;
 [Route("api/category/")]
 public class CategoryController : HomeController
 {
+    private readonly ICategoryRepository _categoryRepository;
+
+    public CategoryController(ICategoryRepository categoryRepository)
+    {
+        _categoryRepository = categoryRepository;
+    }
+
     [HttpGet("categories")]
-    public async Task<IActionResult> GetAllAsync(
+    public async Task<IActionResult> GetAllCategoriesAsync(
         [FromServices] IMemoryCache cache,
-        [FromServices] BlogDataContext context,
         [FromQuery] int? page = 0,
         [FromQuery] int? pageSize = 25)
     {
-        if(page is null || pageSize is null)
+        var categories = await _categoryRepository.GetAllAsync((int)page, (int)pageSize);
+
+        if(!categories.Success)
             return FailureResponse(
-                (int)HttpStatusCode.BadRequest,
-                "The page and page size fields is required.");
+                (int)HttpStatusCode.BadRequest, "Something went wrong.");
 
-        var categoriesFromCache = await cache.GetOrCreateAsync(
-            key: "CategoriesCache",
-            factory: async entry => 
-            {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-                
-                return await GetCategoriesAsync(context: context);
-            });
-
-        if(categoriesFromCache is not null)
-            return SuccessResponse<List<Category>>(
-                statusCode: (int)HttpStatusCode.OK,
-                value: categoriesFromCache);
-            
-        var categories = await context
-                .Categories
-                .AsNoTracking()
-                .Skip((int)page * (int)pageSize)
-                .Take((int)pageSize)
-                .ToListAsync();
-
-        if(categories is null)
-            return FailureResponse(
-                statusCode: (int)HttpStatusCode.BadRequest,
-                message: "There is no categories.");
-
-        return SuccessResponse<List<Category>>(
+        return SuccessResponse<IEnumerable<Category>>(
             statusCode: (int)HttpStatusCode.OK,
-            value: categories);
+            value: categories.Value);
     }
 
-    private async Task<List<Category>> GetCategoriesAsync(
-        [FromServices] BlogDataContext context)
-            => await context.Categories.ToListAsync();
-    
-
-    [HttpGet("categories/{id:int}")]
-    public async Task<IActionResult> GetByIdAsync(
+    [HttpGet("category/{id:int}")]
+    public async Task<IActionResult> GetCategoryByIdAsync(
         [FromRoute] int? id,
         [FromServices] BlogDataContext context)
     {
-        if(id is null)
+        if (id is null)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.NotFound,
                 message: "Category not found. Please, enter a valid category.");
 
-        var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
-        
-        if(category is null)
+        var category = await _categoryRepository.GetByIdAsync((int)id);
+
+        if(!category.Success)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.BadRequest,
                 message: "Something went wrong!");
 
         return SuccessResponse<Category>(
             statusCode: (int)HttpStatusCode.OK,
-            value: category);
+            value: category.Value);
     }
 
-    [HttpPost("categories")]
-    public async Task<IActionResult> CreateAsync(
-        [FromBody] EditorCategoryDto categoryRequest,
-        [FromServices] BlogDataContext context)
+    [HttpPost("create-category")]
+    public async Task<IActionResult> CreateCategoryAsync([FromBody] EditorCategoryDto categoryRequest)
     {
-        if(!ModelState.IsValid)
+        if (!ModelState.IsValid)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.BadRequest,
                 messages: ModelState.GetErrors());
 
-        var category = new Category
-        {
-            Name = categoryRequest.Name,
-            Slug = categoryRequest.Slug
-        };
+        var category = await _categoryRepository.CreateAsync(categoryRequest);
 
-        await context.Categories.AddAsync(category);
-        await context.SaveChangesAsync();
+        if(!category.Success)
+            return FailureResponse(
+                (int)HttpStatusCode.BadRequest,
+                "Something went wrong.");
 
         return SuccessResponse<Category>(
             statusCode: (int)HttpStatusCode.OK,
-            value: category,
-            message: $"/categories/{category.Id}");
+            value: category.Value);
     }
 
-    [HttpPut("categories/{id:int}")]
-    public async Task<IActionResult> UpdateAsync(
+    [HttpPut("update-category/{id:int}")]
+    public async Task<IActionResult> UpdateCategoryAsync(
         [FromRoute] int? id,
-        [FromBody] EditorCategoryDto categoryRequest,
-        [FromServices] BlogDataContext context)
+        [FromBody] EditorCategoryDto categoryRequest)
     {
-        var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
+        if(id is null || !ModelState.IsValid)
+            return FailureResponse(
+                statusCode: (int)HttpStatusCode.BadRequest,
+                message: "Please, fill in all the requested information.");
 
-        if(category is null)
+        var category = await _categoryRepository.UpdateAsync((int)id, categoryRequest);
+
+        if(!category.Success)
             return FailureResponse(
                 statusCode: (int)HttpStatusCode.NotFound,
-                message: "Category not found. Please, enter a valid category.");
-
-        category.Name = categoryRequest.Name;
-        category.Slug = categoryRequest.Slug;
-
-        context.Categories.Update(category);
-        await context.SaveChangesAsync();
+                message: "Something went wrong.");
 
         return SuccessResponse<Category>(
             statusCode: (int)HttpStatusCode.OK,
-            value: category);
+            value: category.Value);
     }
 
-    [HttpDelete("categories/{id:int}")]
-    public async Task<IActionResult> RemoveAsync(
-        [FromRoute] int? id,
-        [FromBody] Category categoryRequest,
-        [FromServices] BlogDataContext context)
+    [HttpDelete("remove-category/{id:int}")]
+    public async Task<IActionResult> RemoveCategoryAsync([FromRoute] int? id)
     {
-        var category = await context.Categories.FirstOrDefaultAsync(x => x.Id == id);
-
-        if(category is null)
+        if(id is null || !ModelState.IsValid)
             return FailureResponse(
-                statusCode: (int)HttpStatusCode.NotFound,
-                message: "Category not found. Please, enter a valid category.");
+                statusCode: (int)HttpStatusCode.BadRequest,
+                message: "Please, fill in all the requested information.");
 
-        context.Categories.Remove(category);
-        await context.SaveChangesAsync();
+        var category = await _categoryRepository.RemoveAsync((int)id);
+
+        if (!category.Success)
+            return FailureResponse(
+                statusCode: (int)HttpStatusCode.BadRequest,
+                message: "Something went wrong.");
 
         return SuccessResponse(
             statusCode: (int)HttpStatusCode.OK,
