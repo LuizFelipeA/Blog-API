@@ -25,21 +25,26 @@ public class CategoryController : HomeController
                 (int)HttpStatusCode.BadRequest,
                 "The page and page size fields is required.");
 
-        var categories = cache.GetOrCreate(
+        var categoriesFromCache = await cache.GetOrCreateAsync(
             key: "CategoriesCache",
-            factory: entry => 
+            factory: async entry => 
             {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                 
-                return GetCategoriesAsync(context: context);
+                return await GetCategoriesAsync(context: context);
             });
 
-        // var categories = await context
-        //     .Categories
-        //     .AsNoTracking()
-        //     .Skip((int)page * (int)pageSize)
-        //     .Take((int)pageSize)
-        //     .ToListAsync();
+        if(categoriesFromCache is not null)
+            return SuccessResponse<List<Category>>(
+                statusCode: (int)HttpStatusCode.OK,
+                value: categoriesFromCache);
+            
+        var categories = await context
+                .Categories
+                .AsNoTracking()
+                .Skip((int)page * (int)pageSize)
+                .Take((int)pageSize)
+                .ToListAsync();
 
         if(categories is null)
             return FailureResponse(
@@ -51,9 +56,9 @@ public class CategoryController : HomeController
             value: categories);
     }
 
-    private List<Category> GetCategoriesAsync(
+    private async Task<List<Category>> GetCategoriesAsync(
         [FromServices] BlogDataContext context)
-            => context.Categories.ToList();
+            => await context.Categories.ToListAsync();
     
 
     [HttpGet("categories/{id:int}")]

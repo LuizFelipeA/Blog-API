@@ -5,7 +5,7 @@ namespace Blog.Controllers;
 
 public class HomeController : ControllerBase
 {
-    protected IActionResult SuccessResponse<T>(int statusCode, T value, string? message = null)
+    protected IActionResult SuccessResponse<T>(int statusCode, T value, string message = null)
         => StatusCode(
             statusCode: statusCode,
             Outcomes.Success()
