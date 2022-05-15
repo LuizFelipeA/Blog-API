@@ -111,6 +111,7 @@ public class UserController : HomeController
 
     [HttpGet]
     [Route("get-users")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAllAsync(
         [FromServices] BlogDataContext context)
     {

@@ -5,7 +5,6 @@ using Blog.Extensions;
 using Blog.Models;
 using Blog.Repositories.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Blog.Controllers;

@@ -1,9 +1,14 @@
+using Blog.ValueObjects;
+
 namespace Blog.Models;
 
 public class User
 {
     public int Id { get; set; }
+
     public string Name { get; set; }
+
+    public Name FullName { get; set; }
 
     public string Email { get; set; }
 
